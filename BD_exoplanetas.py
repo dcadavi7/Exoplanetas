@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Sep  9 22:33:10 2019
-
-@author: Daniela
-"""
-
 #Functions
 
 global Sector
