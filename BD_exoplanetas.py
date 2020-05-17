@@ -7,6 +7,7 @@ global Writexl
 global Error
 global ID
 global Quantity
+global lc
 
 def ligthcurve(Telescope,Method,Planet,Quantity,i):
     
@@ -29,7 +30,10 @@ def ligthcurve(Telescope,Method,Planet,Quantity,i):
             Writexl = hoja.cell(row = i, column = 25) 
             Writexl.value = "Found"
             
-            createfile(Planet,Time,Flux,Error,Quantity)
+            file = createfile(Planet,Time,Flux,Error,Quantity)
+            
+            BLS(lc,file,i)
+            
         
         except KeyError:
             
@@ -49,7 +53,10 @@ def ligthcurve(Telescope,Method,Planet,Quantity,i):
             Writexl = hoja.cell(row = i, column = 25) 
             Writexl.value = "Found"
             
-            createfile(Planet,Time,Flux,Error,Quantity)
+            file = createfile(Planet,Time,Flux,Error,Quantity)
+            
+            BLS(lc,file,i)
+            
             
         except Exception as e:
             print(str(e))
@@ -72,7 +79,11 @@ def ligthcurve(Telescope,Method,Planet,Quantity,i):
             Writexl.value = "Found"
             
             createfile(Planet,Time,Flux,Error,Quantity)
-        
+            
+            file = createfile(Planet,Time,Flux,Error,Quantity)
+            
+            BLS(lc,file,i)
+            
         except KeyError:
             
             RA = hoja.cell(row = i, column = 16) 
@@ -91,7 +102,9 @@ def ligthcurve(Telescope,Method,Planet,Quantity,i):
             Writexl = hoja.cell(row = i, column = 25) 
             Writexl.value = "Found"
             
-            createfile(Planet,Time,Flux,Error,Quantity)
+            file = createfile(Planet,Time,Flux,Error,Quantity)
+            
+            BLS(lc,file,i)
 
         except Exception as e:
             print(str(e))
@@ -113,7 +126,9 @@ def ligthcurve(Telescope,Method,Planet,Quantity,i):
             Writexl = hoja.cell(row = i, column = 25) 
             Writexl.value = "Found"
             
-            createfile(Planet,Time,Flux,Error,Quantity)
+            file = createfile(Planet,Time,Flux,Error,Quantity)
+            
+            BLS(lc,file,i)
         
         except KeyError:
             
@@ -133,7 +148,9 @@ def ligthcurve(Telescope,Method,Planet,Quantity,i):
             Writexl = hoja.cell(row = i, column = 25) 
             Writexl.value = "Found"
             
-            createfile(Planet,Time,Flux,Error,Quantity)
+            file = createfile(Planet,Time,Flux,Error,Quantity)
+            
+            BLS(lc,file,i)
 
         except Exception as e:
             print(str(e))
@@ -166,6 +183,8 @@ def createfile(Planetfile,Timefile,Fluxfile,Errorfile,Quantity):
         
         time.sleep(1) 
         
+        return file
+        
     elif Quantity == 2:
         
         save_path = path + "\Planet_2"
@@ -179,6 +198,8 @@ def createfile(Planetfile,Timefile,Fluxfile,Errorfile,Quantity):
         doc.save(path + "\\" + excel)
         
         time.sleep(1) 
+        
+        return file
         
     elif Quantity == 3:
         
@@ -194,6 +215,8 @@ def createfile(Planetfile,Timefile,Fluxfile,Errorfile,Quantity):
         
         time.sleep(1) 
         
+        return file
+        
     elif Quantity == 4:
         
         save_path = path + "\Planet_4"
@@ -207,6 +230,8 @@ def createfile(Planetfile,Timefile,Fluxfile,Errorfile,Quantity):
         doc.save(path + "\\" + excel)
         
         time.sleep(1) 
+        
+        return file
         
     elif Quantity == 5:
         
@@ -222,6 +247,8 @@ def createfile(Planetfile,Timefile,Fluxfile,Errorfile,Quantity):
         
         time.sleep(1) 
         
+        return file
+        
     elif Quantity == 6:
         
         save_path = path + "\Planet_6"
@@ -235,6 +262,8 @@ def createfile(Planetfile,Timefile,Fluxfile,Errorfile,Quantity):
         doc.save(path + "\\" + excel)
         
         time.sleep(1) 
+        
+        return file
         
         
     elif Quantity == 7:
@@ -250,6 +279,8 @@ def createfile(Planetfile,Timefile,Fluxfile,Errorfile,Quantity):
         doc.save(path + "\\" + excel)
         
         time.sleep(1) 
+        
+        return file
     
     elif Quantity == 8:
         
@@ -265,6 +296,8 @@ def createfile(Planetfile,Timefile,Fluxfile,Errorfile,Quantity):
         
         time.sleep(1) 
         
+        return file
+        
     else:
 
         save_path = path + "\Other"
@@ -278,7 +311,68 @@ def createfile(Planetfile,Timefile,Fluxfile,Errorfile,Quantity):
         doc.save(path + "\\" + excel)
         
         time.sleep(1)
+        
+        return file
+    
+#-------------------------------------------------------------------------------------------------
 
+def BLS(lcs,file,i):
+    
+    duration = 0.25
+    
+    min_period = np.max([np.median(np.diff(lcs.time)) * 4,np.max(duration) + np.median(np.diff(lcs.time))])
+    max_period = (np.max(lcs.time) - np.min(lcs.time)) / 3.
+    
+        
+    df_min = (max_period-min_period)/(1e5*(max_period*min_period))
+    freq_factor = (df_min*((np.max(lcs.time) - np.min(lcs.time))**2))/duration
+    
+    if max_period > 365:
+        max_period = 365
+    
+    if min_period < 1:
+        min_period = 1
+        
+    pgs = lcs.to_periodogram(method = 'bls', frequency_factor = freq_factor, minimum_period = min_period, maximum_period = max_period) 
+    
+    period_pgs = pgs.period_at_max_power.value
+    t_transit = pgs.transit_time_at_max_power
+    
+    power = pgs.power.value
+    power[power < 0] = 0
+    period = pgs.period.value
+    depth = pgs.depth_at_max_power
+
+    
+    flux_fold = lcs.fold(period_pgs,t0 = t_transit).flux
+    phase_fold = lcs.fold(period_pgs,t0 = t_transit).phase
+    
+    power = ["%.7f" % number for number in power]
+    power = ','.join(power)
+    period = ["%.7f" % number for number in period]
+    period = ','.join(period)
+    flux_fold = ["%.7f" % number for number in flux_fold]
+    flux_fold = ','.join(flux_fold)
+    phase_fold = ["%.7f" % number for number in phase_fold]
+    phase_fold = ','.join(phase_fold)
+    
+    with open(file,'a') as f:
+
+        f.write(power + "\n\n")
+        f.write(period  + "\n\n")
+        f.write(flux_fold  + "\n\n")
+        f.write(phase_fold  + "\n\n")
+        f.write(str(period_pgs)  + "\n\n")
+        f.write(str(t_transit)  + "\n\n")
+        f.write(str(depth))
+        
+    Writexl = hoja.cell(row = i, column = 27)
+    Writexl.value = depth
+        
+    doc.save(path + "\\" + excel)
+    
+    time.sleep(0.5)
+    
 #------------------------------MAIN CODE-------------------------------------------
 
 from lightkurve import search_lightcurvefile
@@ -286,6 +380,7 @@ import openpyxl
 import time
 import numpy as np
 import os
+
 
 path = r"C:\Users\HP\Desktop\Prueba_BD"
 excel = "planets_2020.05.16_11.23.37.xlsx"
@@ -296,6 +391,7 @@ for i in range(1,9):
     os.mkdir(folder)
 
 os.mkdir(path + "\Other")
+
 MAST = os.mkdir(path + "\MAST")
 
 doc = openpyxl.load_workbook(path + "\\" + excel)
@@ -311,9 +407,11 @@ Writexl = hoja.cell(row = 29, column = 25)
 Writexl.value = "Light Curve"
 Writexl = hoja.cell(row = 29, column = 26)
 Writexl.value = "File Status"
+Writexl = hoja.cell(row = 29, column = 27)
+Writexl.value = "Depth"
         
 
-for i in range(30,150):
+for i in range(1262,1263):
     Planet = hoja.cell(row = i, column = 4) 
     Telescope = hoja.cell(row = i, column = 23)
     Method = hoja.cell(row = i, column = 5)
